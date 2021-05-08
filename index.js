@@ -1,6 +1,7 @@
 const readline = require("readline");
 const dgram = require("dgram");
 const cli = readline.createInterface(process.stdin, process.stdout);
+const question = (q) => new Promise(res => cli.question(q, res));
 const log = console.log;
 const clear = console.clear;
 let socket = null;
@@ -27,7 +28,7 @@ cli.on('close', () => {
 clear();
 menu();
 
-function menu () {
+async function menu () {
 	if (socket) {
 		socket.unref();
 		try {
@@ -45,80 +46,101 @@ function menu () {
 	log("[0] Exit");
 	log("[1] Connect");
 	log("[2] Create Server");
-	cli.question("Select: ", num => {
-		switch (num) {
-			case "1":
-				createSocket(connectTo);
-				break;
-			case "2": 
-				bind();
-				break;
-			default:
-				log("\nHave a nice day!");
-				process.exit(0);
-				break;
-		}
-	});
+	log("[3] Continue where i left off")
+	let num = await question("Select: ");
+	switch (num) {
+		case "1":
+			createSocket(connectTo);
+			break;
+		case "2":
+			bind();
+			break;
+		case "3":
+			continue_Where_I_Left_Off();
+			break;
+		default:
+			log("\nHave a nice day!");
+			process.exit(0);
+			break;
+	}
 }
 
-function createSocket(fct) {
+async function createSocket(fct) {
 	clear();
 	log("Socket Type");
 	log("[0] Main Menu");
 	log("[1] udp4 (Recommended for Beginner)");
 	log("[2] udp6");
-	cli.question("Select: ", num => {
-		switch (num) {
-			case "1":
-				fct("udp4");
-				break;
-			case "2":
-				fct("udp6");
-				break;
-			default:
-				menu();
-				break;
-		}
-	});
+	let num = await question("Select: ");
+	switch (num) {
+		case "1":
+			fct("udp4");
+			break;
+		case "2":
+			fct("udp6");
+			break;
+		default:
+			menu();
+			break;
+	}
 }
 
-function connectTo(type) {
+async function connectTo(type) {
+	if (!type && !socket) return createSocket(connectTo);
 	clear();
-	socket = new dgram.Socket(type);
-	cli.question("Host (Empty to Menu): ", host => {
-		if (!host.length) return menu();
-		chat.address = host;
-		cli.question ("Port (Empty to Menu): ", port => {
-			if (!port.length) return menu();
-			chat.port = port;
-			clear();
-			log("Waiting Server Acknowledge....");
-			chatting = true;
-			send("Ack");
-			timeout = setTimeout(() => {
-				log("Response Timed out. Back to Menu....");
-				setTimeout(menu, 2000);
-			}, 10000);
-			listen();
-		});
-	});
+	if (!socket) {
+		socket = new dgram.Socket(type);
+		socket.on('error', e => process.emit("unhandledRejection", e));
+	}
+	let host = await question("Host (Empty to Menu): ");
+	if (!host.length) return menu();
+	chat.address = host;
+	let port = await question("Port (Empty to Menu): ");
+	if (!port.length) return menu();
+	chat.port = port;
+	clear();
+	log("Waiting Server Acknowledge....");
+	chatting = true;
+	send("Ack");
+	timeout = setTimeout(() => {
+		log("Response Timed out. Back to Menu....");
+		setTimeout(menu, 2000);
+	}, 10000);
+	listen();
 }
 
-function bind(type) {
+async function bind(type) {
 	if (!type) return createSocket(bind);
 	socket = new dgram.Socket(type);
+	socket.on('error', e => process.emit("unhandledRejection", e));
 	clear();
-	cli.question("Port to Bind (Empty to Menu): ", port => {
-		if (!port) return menu();
-		socket.bind(Number(port), () => {
-			log("Binded on Port", Number(port));
-			log("Waiting for Incomming Message....");
-			//cli.pause();
-			chatting = true;
-			server = true;
-			listen();
-		});
+	let port = await question("Port to Bind (Empty to Menu): ");
+	if (!port) return menu();
+	socket.bind(Number(port), () => {
+		log("Binded on Port", Number(port));
+		log("Waiting for Incomming Message....");
+		//cli.pause();
+		chatting = true;
+		server = true;
+		listen();
 	});
+}
+
+async function continue_Where_I_Left_Off(type) {
+	if (!type) return createSocket(continue_Where_I_Left_Off);
+	clear();
+	let address = await question("Enter your last IP address (Not Server IP): ")
+	if (!address.length) return menu();
+	let port = await question("Enter your last PORT (Not Server Port): ");
+	if (!port.length) return menu();
+	socket = new dgram.Socket(type);
+	socket.on('error', e => process.emit("unhandledRejection", e));
+	try {
+		socket.bind(port, address);
+		connectTo();
+	} catch (error) {
+		process.emit("unhandledRejection", error);
+	}
 }
 
 function listen() {
@@ -133,8 +155,6 @@ function listen() {
 			cli.setPrompt(`${socket.me.address}:${socket.me.port} (You): `);
 			console.log("Connected!");
 			return cli.prompt();
-		} else if (server && `${chat.address}:${chat.port}` !== `${remote.address}:${remote.port}`) {
-			return socket.send("Rejected", 0, 8, remote.port, remote.address);
 		}
 
 		if (msg == "Acknowledged" && !acknowledged) {
@@ -144,12 +164,6 @@ function listen() {
 			socket.me = socket.address();
 			cli.setPrompt(`${socket.me.address}:${socket.me.port} (You): `);
 			return cli.prompt();
-		} else if(msg == "Rejected" && !acknowledged && !server) {
-			clearTimeout(timeout);
-			log("Server Rejected your Request.");
-			log("\nServer rejected your request because the server is already connected with another client. If you think you just disconnected before, Try ask to the owner of server to restart the server. Also please Try again later.");
-			cli.pause();
-			return cli.question("\nPress ENTER to back to menu.", menu);
 		}
 
 		if (`${chat.address}:${chat.port}` !== `${remote.address}:${remote.port}`) return;
