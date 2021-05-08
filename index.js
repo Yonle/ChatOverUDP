@@ -1,6 +1,5 @@
 const readline = require("readline");
 const dgram = require("dgram");
-const { promisify } = require("util");
 const cli = readline.createInterface(process.stdin, process.stdout);
 const log = console.log;
 const clear = console.clear;
