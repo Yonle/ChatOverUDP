@@ -130,7 +130,7 @@ function listen() {
 			locked = false;
 			console.log("Connected!");
 			return cli.prompt();
-		} else if (`${chat.address}:${chat.port}` !== `${remote.address}:${remote.port}`) {
+		} else if (server && `${chat.address}:${chat.port}` !== `${remote.address}:${remote.port}`) {
 			return socket.send("Rejected", 0, 8, remote.port, remote.address);
 		}
 		
@@ -139,7 +139,7 @@ function listen() {
 			clearTimeout(timeout);
 			log("Server Acknowledged. Marking as Connected.")
 			return cli.prompt();
-		} else if(msg == "Rejected" && !acknowledged) {
+		} else if(msg == "Rejected" && !acknowledged && !server) {
 			clearTimeout(timeout);
 			log("Server Rejected your Request.");
 			log("\nServer rejected your request because the server is already connected with another client. Try again later.");
