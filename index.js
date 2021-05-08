@@ -136,7 +136,7 @@ function listen() {
 		} else if (server && `${chat.address}:${chat.port}` !== `${remote.address}:${remote.port}`) {
 			return socket.send("Rejected", 0, 8, remote.port, remote.address);
 		}
-		
+
 		if (msg == "Acknowledged" && !acknowledged) {
 			acknowledged = true;
 			clearTimeout(timeout);
@@ -151,6 +151,8 @@ function listen() {
 			cli.pause();
 			return cli.question("Press ENTER to back to menu.", menu);
 		}
+
+		if (`${chat.address}:${chat.port}` !== `${remote.address}:${remote.port}`) return;
 		log(`\n${remote.address}:${remote.port}: ${msg}`);
 		cli.prompt();
 	});
@@ -166,7 +168,8 @@ function send(c) {
 }
 
 process.on('unhandledRejection', error => {
+	if (timeout) clearTimeout(timeout);
 	console.error(error);
-	log("-----> Will back to menu after 5 second....");
+	log("Will back to menu after 5 second....");
 	setTimeout(menu, 3000);
 });
