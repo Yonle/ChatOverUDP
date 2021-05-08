@@ -5,7 +5,7 @@ const log = console.log;
 const clear = console.clear;
 let socket = null;
 let server = null;
-let locked = false;
+let chatting = false;
 let timeout = null;
 let chat = {};
 let acknowledged = false;
@@ -15,8 +15,8 @@ cli.on('line', async str => {
 	cli.prompt();
 });
 cli.on('close', () => {
-	if (locked) {
-		locked = false;
+	if (chatting) {
+		chatting = false;
 		if (socket) socket.unref();
 		socket = null;
 		return menu();
@@ -34,13 +34,14 @@ function menu () {
 			socket.disconnect();
 		} catch (error) {}
 		socket = null;
+		chatting = false;
 	}
 	clear();
 	acknowledged = false;
 	cli.resume();
 	server = false;
 	chat = {}
-	log("ChatOverUDP V0.1")
+	log("ChatOverUDP V1")
 	log("[0] Exit");
 	log("[1] Connect");
 	log("[2] Create Server");
@@ -92,6 +93,7 @@ function connectTo(type) {
 			chat.port = port;
 			clear();
 			log("Waiting Server Acknowledge....");
+			chatting = true;
 			send("Ack");
 			timeout = setTimeout(() => {
 				log("Response Timed out. Back to Menu....");
@@ -112,7 +114,7 @@ function bind(type) {
 			log("Binded on Port", Number(port));
 			log("Waiting for Incomming Message....");
 			//cli.pause();
-			locked = true;
+			chatting = true;
 			server = true;
 			listen();
 		});
@@ -121,13 +123,14 @@ function bind(type) {
 
 function listen() {
 	if (!socket) return menu();
-	socket.on('message', (c, remote) => {
+	socket.on('message', async (c, remote) => {
 		let msg = new Buffer.from(c, 'utf8');
 		if (!chat.port && !chat.address && msg == "Ack") {
 			chat.port = remote.port;
 			chat.address = remote.address;
-			send("Acknowledged");
-			locked = false;
+			await send("Acknowledged");
+			socket.me = socket.address();
+			cli.setPrompt(`${socket.me.address}:${socket.me.port} (You): `);
 			console.log("Connected!");
 			return cli.prompt();
 		} else if (server && `${chat.address}:${chat.port}` !== `${remote.address}:${remote.port}`) {
@@ -137,7 +140,9 @@ function listen() {
 		if (msg == "Acknowledged" && !acknowledged) {
 			acknowledged = true;
 			clearTimeout(timeout);
-			log("Server Acknowledged. Marking as Connected.")
+			log("Server Acknowledged. Marking as Connected.");
+			socket.me = socket.address();
+			cli.setPrompt(`${socket.me.address}:${socket.me.port} (You): `);
 			return cli.prompt();
 		} else if(msg == "Rejected" && !acknowledged && !server) {
 			clearTimeout(timeout);
