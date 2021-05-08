@@ -147,9 +147,9 @@ function listen() {
 		} else if(msg == "Rejected" && !acknowledged && !server) {
 			clearTimeout(timeout);
 			log("Server Rejected your Request.");
-			log("\nServer rejected your request because the server is already connected with another client. Try again later.");
+			log("\nServer rejected your request because the server is already connected with another client. If you think you just disconnected before, Try ask to the owner of server to restart the server. Also please Try again later.");
 			cli.pause();
-			return cli.question("Press ENTER to back to menu.", menu);
+			return cli.question("\nPress ENTER to back to menu.", menu);
 		}
 
 		if (`${chat.address}:${chat.port}` !== `${remote.address}:${remote.port}`) return;
