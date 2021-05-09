@@ -166,7 +166,6 @@ function listen() {
 			return cli.prompt();
 		}
 
-		if (`${chat.address}:${chat.port}` !== `${remote.address}:${remote.port}`) return;
 		log(`\n${remote.address}:${remote.port}: ${msg}`);
 		cli.prompt();
 	});
