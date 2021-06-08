@@ -101,7 +101,7 @@ async function connectTo(type) {
 	clear();
 	log("Waiting Server Acknowledge....");
 	chatting = true;
-	send("Ack");
+	send("ping");
 	timeout = setTimeout(() => {
 		log("Response Timed out. Back to Menu....");
 		setTimeout(menu, 2000);
@@ -147,17 +147,17 @@ function listen() {
 	if (!socket) return menu();
 	socket.on('message', async (c, remote) => {
 		let msg = new Buffer.from(c, 'utf8');
-		if (!chat.port && !chat.address && msg == "Ack") {
+		if (!chat.port && !chat.address && msg == "ping") {
 			chat.port = remote.port;
 			chat.address = remote.address;
-			await send("Acknowledged");
+			await send("pong");
 			socket.me = socket.address();
 			cli.setPrompt(`${socket.me.address}:${socket.me.port} (You): `);
 			console.log("Connected!");
 			return cli.prompt();
 		}
 
-		if (msg == "Acknowledged" && !acknowledged) {
+		if (msg == "pong" && !acknowledged) {
 			acknowledged = true;
 			clearTimeout(timeout);
 			log("Server Acknowledged. Marking as Connected.");
